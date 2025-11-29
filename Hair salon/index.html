@@ -1,0 +1,276 @@
+<!--
+BMW Showroom - Single Page Project
+HTML/CSS/JS (single file). Open this file in a browser (double-click index.html)
+Features:
+- Responsive grid of car cards
+- Click a card -> card details open in an overlay that enlarges while page behind dims
+- Overlay shows larger image, more details, and a contact form (email or phone)
+- Form performs basic validation and simulates sending (no backend)
+- Accessible keyboard handling (Esc to close, focus trapping is simple)
+- Comments inside the code explain structure
+
+Author: Generated for university project
+-->
+
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BMW Showroom - معرض سيارات</title>
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --accent:#0ea5a4;
+      --muted:#94a3b8;
+      --glass: rgba(255,255,255,0.04);
+      --overlay-bg: rgba(6,8,15,0.6);
+      --radius:12px;
+      --transition: 300ms ease;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071122 0%, #07142a 100%);color:#e6eef6}
+    .container{max-width:1100px;margin:32px auto;padding:16px}
+
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:18px}
+    header h1{font-size:1.4rem;margin:0}
+    header p{color:var(--muted);margin:0;font-size:0.95rem}
+
+    /* grid */
+    .cars-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    @media (max-width:900px){.cars-grid{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:600px){.cars-grid{grid-template-columns:1fr}}
+
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));border-radius:var(--radius);padding:12px;cursor:pointer;transition:transform var(--transition), box-shadow var(--transition);box-shadow:0 6px 18px rgba(2,6,23,0.6);display:flex;flex-direction:column;gap:10px}
+    .card:hover{transform:translateY(-6px);box-shadow:0 14px 30px rgba(0,0,0,0.6)}
+
+    .card .thumb{height:160px;border-radius:10px;overflow:hidden;background:linear-gradient(180deg,#0a1520,#08121a);display:flex;align-items:center;justify-content:center}
+    .card img{width:100%;height:100%;object-fit:cover;display:block}
+
+    .meta{display:flex;justify-content:space-between;align-items:center}
+    .meta .title{font-weight:600}
+    .meta .price{color:var(--accent);font-weight:700}
+
+    .specs{color:var(--muted);font-size:0.9rem}
+
+    /* overlay */
+    .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:999}
+    .overlay.show{display:flex}
+    .overlay-bg{position:absolute;inset:0;background:var(--overlay-bg);backdrop-filter: blur(4px);transition:opacity var(--transition);opacity:1}
+
+    .detail-card{position:relative;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));width:min(1000px,94%);border-radius:16px;padding:18px;z-index:10;display:grid;grid-template-columns:1fr 360px;gap:18px;box-shadow:0 30px 60px rgba(2,8,20,0.7);transform:translateY(0);transition:transform var(--transition), opacity var(--transition);}
+    @media (max-width:900px){.detail-card{grid-template-columns:1fr}}
+
+    .detail-card .big{border-radius:12px;overflow:hidden;background:#06101a}
+    .detail-card img{width:100%;height:100%;object-fit:cover}
+
+    .info{padding:8px;display:flex;flex-direction:column;gap:10px}
+    .info h2{margin:0}
+    .info .price{font-size:1.25rem;color:var(--accent);font-weight:800}
+    .info .desc{color:var(--muted);line-height:1.4}
+
+    .contact{background:var(--glass);padding:12px;border-radius:12px}
+    .contact h3{margin:0 0 8px 0}
+    .contact label{display:block;font-size:0.9rem;margin-bottom:6px}
+    .contact input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    .contact button{margin-top:8px;width:100%;padding:10px;border-radius:8px;border:0;background:var(--accent);color:#042425;font-weight:700;cursor:pointer}
+
+    .close-btn{position:absolute;top:12px;left:12px;background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:1.1rem}
+
+    footer{text-align:center;margin-top:26px;color:var(--muted);font-size:0.9rem}
+
+    /* small helpers */
+    .muted{color:var(--muted)}
+    .pill{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:999px;font-size:0.85rem}
+
+    /* subtle entrance */
+    .detail-card.enter{animation:pop .28s ease}
+    @keyframes pop{from{transform:translateY(8px) scale(0.98);opacity:0}to{transform:none;opacity:1}}
+
+    /* success message */
+    .toast{position:fixed;right:18px;bottom:18px;background:#052b29;padding:12px;border-radius:10px;color:#bff4ee;box-shadow:0 10px 30px rgba(0,0,0,0.6)}
+
+    /* rtl adjustments for form fields on small screens */
+    input::placeholder{color:rgba(255,255,255,0.35)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>معرض BMW الفاخر</h1>
+        <p class="muted">تصفح تشكيلة من السيارات الفخمة — اضغط على أي بطاقة لعرض التفاصيل والتواصل مع المعرض.</p>
+      </div>
+      <div class="pill">مشروع مادة الويب — بسيط وعملي</div>
+    </header>
+
+    <main>
+      <section class="cars-grid" id="carsGrid">
+        <!-- Cards will be generated by JS. Each card has data attributes used to populate the overlay -->
+      </section>
+    </main>
+
+    <footer>© الجامعة - مشروع عرض سيارات | يمكنك تعديل البيانات والألوان كما تحب</footer>
+  </div>
+
+  <!-- Overlay detail panel -->
+  <div class="overlay" id="overlay" aria-hidden="true">
+    <div class="overlay-bg" id="overlayBg" tabindex="-1"></div>
+
+    <div class="detail-card enter" role="dialog" aria-modal="true" aria-labelledby="carTitle" tabindex="0">
+      <button class="close-btn" id="closeBtn" aria-label="إغلاق">✕</button>
+
+      <div class="big" id="detailImageWrap">
+        <img id="detailImage" src="" alt="صورة السيارة">
+      </div>
+
+      <aside class="info">
+        <h2 id="carTitle">Model</h2>
+        <div class="price" id="carPrice">$0</div>
+        <div class="desc" id="carDesc">تفاصيل السيارة ستظهر هنا. 
+        يمكن إضافة مواصفات تقنية، سنة الصنع، اللون، الحالة وغيرها.</div>
+
+        <div class="contact" id="contactBox">
+          <h3>تواصل مع المعرض</h3>
+          <label for="contactInput">بريد إلكتروني أو رقم هاتف</label>
+          <input id="contactInput" type="text" placeholder="example@mail.com or +970599...">
+          <button id="sendBtn">أرسل</button>
+          <div id="formNote" class="muted" style="margin-top:8px;font-size:0.85rem">سنقوم بمحاكاة الإرسال محليًا. لإرسال حقيقي تحتاج back-end.</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div id="toastHolder"></div>
+
+  <script>
+    /********************* Sample Data **********************/
+    const cars = [
+      {
+        id: 'bmw-m3', title: 'BMW M3', price: '$72,900', img: 'https://images.unsplash.com/photo-1542365880-03e1a0f6bd1b?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=6f5d3c7e4c2c3a8c6b8a9f4b5c0f1a2e',
+        desc: 'محرك 3.0L، 473 حصان، ناقل حركة أوتوماتيكي، 0-100 في 4.2 ثانية، داخلية جلدية، نظام ملاحة متقدم.'
+      },
+      {
+        id: 'bmw-x6', title: 'BMW X6', price: '$85,300', img: 'https://images.unsplash.com/photo-1616627565071-6c1b1ff3be2e?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=7f1d9a6c5a3c4b6d8e2a3f1b2c4d5e6f',
+        desc: 'سيارة SUV كوبيه، نظام دفع رباعي، مساحة داخلية فاخرة، تقنيات مساعدة السائق.'
+      },
+      {
+        id: 'bmw-i8', title: 'BMW i8', price: '$147,500', img: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=9a6c4e7f2a3b1c5d6e7f8a9b0c1d2e3f',
+        desc: 'هجين رياضي، تصميم مستقبلي، أداء عالي وفعالية في استهلاك الوقود.'
+      },
+      {
+        id: 'bmw-7', title: 'BMW 7 Series', price: '$95,000', img: 'https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=1a2b3c4d5e6f7g8h9i0jklmnop',
+        desc: 'سيدان فاخرة، تقنيات راحة قصوى، محرك V8 خيار متاح، نظام صوت ممتاز.'
+      },
+      {
+        id: 'bmw-z4', title: 'BMW Z4', price: '$50,300', img: 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=abcdef1234567890abcdef1234567890',
+        desc: 'سبايدر رياضي، قيادة ممتعة، خفة في التحكم وتصميم أنيق.'
+      },
+      {
+        id: 'bmw-x5', title: 'BMW X5', price: '$61,200', img: 'https://images.unsplash.com/photo-1592194996308-7a5e29c5f9a7?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=11121314151617181920212223242526',
+        desc: 'SUV متوسطة الحجم، أداء ممتاز في الطرق المختلفة، أنظمة أمان متقدمة.'
+      }
+    ];
+
+    /********************* Render cards **********************/
+    const grid = document.getElementById('carsGrid');
+    cars.forEach(car => {
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.tabIndex = 0;
+      div.setAttribute('data-id', car.id);
+      div.innerHTML = `
+        <div class="thumb"><img src="${car.img}" alt="${car.title}"></div>
+        <div class="meta"><div class="title">${car.title}</div><div class="price">${car.price}</div></div>
+        <div class="specs">موديل فاخر • أداء عالي • حالة ممتازة</div>
+      `;
+      div.addEventListener('click', () => openDetail(car));
+      div.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(car); } });
+      grid.appendChild(div);
+    });
+
+    /********************* Overlay behavior **********************/
+    const overlay = document.getElementById('overlay');
+    const overlayBg = document.getElementById('overlayBg');
+    const detailImage = document.getElementById('detailImage');
+    const carTitle = document.getElementById('carTitle');
+    const carPrice = document.getElementById('carPrice');
+    const carDesc = document.getElementById('carDesc');
+    const contactInput = document.getElementById('contactInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const closeBtn = document.getElementById('closeBtn');
+
+    function openDetail(car){
+      detailImage.src = car.img;
+      detailImage.alt = car.title;
+      carTitle.textContent = car.title;
+      carPrice.textContent = car.price;
+      carDesc.textContent = car.desc;
+
+      overlay.classList.add('show');
+      overlay.setAttribute('aria-hidden','false');
+      // focus the dialog for accessibility
+      document.querySelector('.detail-card').focus();
+
+      // small animation: ensure enter class is present
+      const card = document.querySelector('.detail-card');
+      card.classList.remove('enter');
+      void card.offsetWidth; // force reflow
+      card.classList.add('enter');
+
+      // dim background by adding a class to body if needed (we use overlay-bg)
+    }
+
+    function closeDetail(){
+      overlay.classList.remove('show');
+      overlay.setAttribute('aria-hidden','true');
+      // clear form
+      contactInput.value = '';
+    }
+
+    overlayBg.addEventListener('click', closeDetail);
+    closeBtn.addEventListener('click', closeDetail);
+    document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape'){ closeDetail(); } });
+
+    /********************* Form handling (simulate send) **********************/
+    function showToast(text){
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.textContent = text;
+      document.getElementById('toastHolder').appendChild(t);
+      setTimeout(()=>t.remove(), 3500);
+    }
+
+    sendBtn.addEventListener('click', ()=>{
+      const val = contactInput.value.trim();
+      if(!val){
+        showToast('من فضلك أدخل بريدًا أو رقم هاتف صحيح');
+        contactInput.focus();
+        return;
+      }
+      // Basic validation: check if it looks like email or phone
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+      const isPhone = /^[+0-9\s-]{6,20}$/.test(val);
+      if(!isEmail && !isPhone){
+        showToast('المدخل ليس بريدًا أو رقم هاتف صالح');
+        return;
+      }
+
+      // simulate sending — here you would call a backend API (fetch / axios)
+      showToast('تم إرسال طلب التواصل. سيعاودك المعرض قريبًا.');
+      // auto-close overlay after send
+      setTimeout(()=>{ closeDetail(); }, 1200);
+    });
+
+    /********************* Notes for instructor / developer **********************/
+    /*
+      - To make the send real: implement a backend endpoint (e.g., /api/contact) that accepts JSON {carId, contact}
+      - Then change sendBtn handler to use fetch POST and show success/error depending on response.
+      - To persist cars: store them in a DB and fetch dynamically.
+      - To host: put this file and assets on any static host (GitHub Pages, Netlify). For images we use external Unsplash links.
+    */
+  </script>
+</body>
+</html>
